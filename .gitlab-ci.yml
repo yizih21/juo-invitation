@@ -1,0 +1,11 @@
+# GitLab Pages: 저장소 루트의 파일을 그대로 public/ 으로 올립니다.
+pages:
+  stage: deploy
+  script:
+    - mkdir -p public
+    - cp -r index.html images public/
+  artifacts:
+    paths:
+      - public
+  rules:
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
