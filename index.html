@@ -13,6 +13,21 @@ a{color:#3D6FA8}a:hover{color:#2B5280}
 <meta property="og:description" content="2026년 11월 1일 일요일 오후 1시, 경복궁 안산점">
 <meta property="og:image" content="images/hero.jpg">
 <style>body{background:#F4F6F8}</style>
+<style>
+.lb{position:fixed;inset:0;z-index:50;background:rgba(0,0,0,0.94);display:none;flex-direction:column}
+.lb.open{display:flex}
+.lb .bar{height:56px;display:flex;align-items:center;justify-content:space-between;padding:0 8px 0 16px;color:#fff;font-family:'Cormorant Garamond',serif;font-size:18px}
+.lb .x{width:44px;height:44px;border:none;background:transparent;color:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center}
+.lb .stage{position:relative;flex:1;min-height:0;overflow:hidden;touch-action:pan-y}
+.lb .track{display:flex;height:100%;transition:transform .3s ease}
+.lb .track.drag{transition:none}
+.lb .slide{flex:0 0 100%;width:100%;height:100%;display:flex;align-items:center;justify-content:center;padding:0 12px;box-sizing:border-box}
+.lb .slide img{max-width:100%;max-height:100%;object-fit:contain;display:block;border-radius:6px;-webkit-user-drag:none;user-select:none}
+.lb .nav{position:absolute;top:50%;margin-top:-22px;width:44px;height:44px;border-radius:22px;border:none;background:rgba(255,255,255,0.18);color:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center}
+.lb .prev{left:6px}.lb .next{right:6px}
+.lb .hint{margin:0;height:56px;display:flex;align-items:center;justify-content:center;color:rgba(255,255,255,0.7);font-size:13px}
+.gal-thumb{cursor:pointer}
+</style>
 </head>
 <body>
 <div style="width: 100%; max-width: 420px; margin: 0 auto; box-sizing: border-box; background: #FFFFFF; font-family: 'Gowun Batang', serif; color: #333333; display: flex; flex-direction: column">
@@ -294,6 +309,52 @@ a{color:#3D6FA8}a:hover{color:#2B5280}
   document.getElementById('share-btn').addEventListener('click',function(){
     if(navigator.share){ navigator.share({title:'주오의 첫 번째 생일에 초대합니다',text:'주오 돌잔치 초대장',url:location.href}).catch(function(){}); }
     else { copy(); } });
+})();
+</script>
+
+<!-- LIGHTBOX -->
+<div class="lb" id="lb" role="dialog" aria-modal="true" aria-label="사진 크게 보기">
+<div class="bar"><span id="lb-count">1 / 1</span><button class="x" id="lb-close" aria-label="닫기"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>
+<div class="stage" id="lb-stage">
+<div class="track" id="lb-track"></div>
+<button class="nav prev" id="lb-prev" aria-label="이전 사진"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg></button>
+<button class="nav next" id="lb-next" aria-label="다음 사진"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 5l7 7-7 7"/></svg></button>
+</div>
+<p class="hint">좌우로 넘겨서 보실 수 있어요</p>
+</div>
+<script>
+(function(){
+  var thumbs = Array.prototype.slice.call(document.getElementById('gallery-btn').closest('section').querySelectorAll('img'));
+  var lb=document.getElementById('lb'), track=document.getElementById('lb-track'), stage=document.getElementById('lb-stage'), count=document.getElementById('lb-count');
+  var cur=0, total=thumbs.length;
+  thumbs.forEach(function(im,i){
+    im.classList.add('gal-thumb'); im.setAttribute('tabindex','0'); im.setAttribute('role','button'); im.setAttribute('aria-label',(im.alt||'사진')+' 크게 보기');
+    im.addEventListener('click',function(){ openLb(i); });
+    im.addEventListener('keydown',function(e){ if(e.key==='Enter'||e.key===' '){ e.preventDefault(); openLb(i); } });
+    var s=document.createElement('div'); s.className='slide';
+    var big=document.createElement('img'); big.src=im.src; big.alt=im.alt; big.draggable=false; big.loading='lazy';
+    big.addEventListener('click',function(e){ e.stopPropagation(); });
+    s.appendChild(big); track.appendChild(s);
+  });
+  function render(dx){ track.style.transform='translateX(calc('+(-cur*100)+'% + '+(dx||0)+'px))'; count.textContent=(cur+1)+' / '+total; }
+  function openLb(i){ cur=i; track.classList.add('drag'); render(0); lb.classList.add('open'); document.body.style.overflow='hidden'; requestAnimationFrame(function(){ track.classList.remove('drag'); }); }
+  function closeLb(){ lb.classList.remove('open'); document.body.style.overflow=''; }
+  function go(n){ cur=(n+total)%total; render(0); }
+  document.getElementById('lb-close').addEventListener('click',closeLb);
+  document.getElementById('lb-prev').addEventListener('click',function(e){ e.stopPropagation(); go(cur-1); });
+  document.getElementById('lb-next').addEventListener('click',function(e){ e.stopPropagation(); go(cur+1); });
+  var swiped=false;
+  stage.addEventListener('click',function(){ if(swiped){ swiped=false; return; } closeLb(); });
+  document.addEventListener('keydown',function(e){ if(!lb.classList.contains('open')) return;
+    if(e.key==='Escape') closeLb(); else if(e.key==='ArrowLeft') go(cur-1); else if(e.key==='ArrowRight') go(cur+1); });
+  var sx=0, sy=0, dragging=false, horiz=null;
+  stage.addEventListener('touchstart',function(e){ var t=e.touches[0]; sx=t.clientX; sy=t.clientY; dragging=true; horiz=null; track.classList.add('drag'); },{passive:true});
+  stage.addEventListener('touchmove',function(e){ if(!dragging) return; var t=e.touches[0], dx=t.clientX-sx, dy=t.clientY-sy;
+    if(horiz===null&&(Math.abs(dx)>8||Math.abs(dy)>8)) horiz=Math.abs(dx)>Math.abs(dy);
+    if(horiz) render(dx); },{passive:true});
+  stage.addEventListener('touchend',function(e){ if(!dragging) return; dragging=false; track.classList.remove('drag');
+    var t=e.changedTouches[0], dx=t.clientX-sx;
+    if(horiz&&Math.abs(dx)>40){ swiped=true; go(dx<0?cur+1:cur-1); } else render(0); });
 })();
 </script>
 </body>
